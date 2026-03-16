@@ -1,4 +1,4 @@
-# cmdb
+# cmdb - Configration Managment Database
 
 ## Dependency-Check profiles
 
