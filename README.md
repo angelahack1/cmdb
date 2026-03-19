@@ -1,4 +1,4 @@
-# cmdb
+# cmdb - Configuration Management Database
 
 A Jakarta Servlet/JSP web application packaged as a WAR and intended to run on Eclipse GlassFish 7. The current codebase is a small CMDB-style starter app centered on an **Assets** feature backed by MongoDB, plus a health endpoint, Log4j2-based logging, and an OWASP Dependency-Check workflow.
 
