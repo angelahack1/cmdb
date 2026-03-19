@@ -300,6 +300,76 @@ If you want the deployed app to match the current repository, rebuild and redepl
 
 Set these values before deploying or starting GlassFish in a way the server process can read them.
 
+### What the app expects
+
+From the current Java code:
+
+- database name comes from `MONGODB_DB` or `mongodb.db`
+- connection URI comes from `MONGODB_URI` or `mongodb.uri`
+- collection name is exactly `Assets`
+- document fields used by the app are:
+  - `_id` (`ObjectId`)
+  - `name` (`String`, required)
+  - `type` (`String`, optional)
+  - `owner` (`String`, optional)
+  - `createdAt` (`Date`, used for latest-first sorting)
+
+### Ready-to-run Mongo shell bootstrap script
+
+A complete Mongo shell bootstrap script is included here:
+
+- `mongo/bootstrap-cmdb.js`
+
+It does all of this for you:
+
+- switches to the target database
+- creates the `Assets` collection if it does not exist
+- creates useful indexes for this demo
+- inserts seed asset documents
+- prints a summary and preview of inserted records
+
+### Fastest way to initialize MongoDB
+
+If your local MongoDB is running on the default port, execute:
+
+```javascript
+mongosh mongodb://localhost:27017/cmdb --file mongo/bootstrap-cmdb.js
+```
+
+That creates and seeds the default database used in the examples: `cmdb`.
+
+### Use a different database name
+
+If you want a different database name, pass `APP_DB` when running the script:
+
+```javascript
+mongosh mongodb://localhost:27017 --eval "var APP_DB='cmdb_dev'" --file mongo/bootstrap-cmdb.js
+```
+
+Then point the app at the same database:
+
+```cmd
+set MONGODB_URI=mongodb://localhost:27017
+set MONGODB_DB=cmdb_dev
+```
+
+### Reseed options
+
+The script supports two optional flags:
+
+- `DROP_FIRST=true` → drops the whole target database before recreating everything
+- `RESEED_ASSETS=true` → deletes only the documents in `Assets` before reseeding
+
+Examples:
+
+```javascript
+mongosh mongodb://localhost:27017 --eval "var APP_DB='cmdb'; var RESEED_ASSETS=true" --file mongo/bootstrap-cmdb.js
+```
+
+```javascript
+mongosh mongodb://localhost:27017 --eval "var APP_DB='cmdb'; var DROP_FIRST=true" --file mongo/bootstrap-cmdb.js
+```
+
 ### Environment variables
 
 ```cmd
@@ -398,14 +468,14 @@ Run a scan and try to open the HTML report afterward:
 
 ```cmd
 cd /d D:\eclipse-workspace\cmdb
-mvn -Pdependency-check,launch-dependency-report -Dlaunch.dependency-report.skip=false verify
+mvn -Pdependency-check,launch-dependency-report -Dlaunch.dependency.report.skip=false verify
 ```
 
 Open an already generated report without running the scan again:
 
 ```cmd
 cd /d D:\eclipse-workspace\cmdb
-mvn -Plaunch-dependency-report -Ddependency-check.skip=true -Dlaunch.dependency-report.skip=false verify
+mvn -Plaunch-dependency-report -Ddependency-check.skip=true -Dlaunch.dependency.report.skip=false verify
 ```
 
 ### Dependency-Check environment
@@ -476,34 +546,38 @@ Based on the current repo contents and live checks:
 
 ## Quick start
 
-### 1. Build
+### 1. Initialize MongoDB
+
+```javascript
+mongosh mongodb://localhost:27017/cmdb --file mongo/bootstrap-cmdb.js
+```
+
+### 2. Build
 
 ```cmd
 cd /d D:\eclipse-workspace\cmdb
 mvn clean package
 ```
 
-### 2. Deploy
+### 3. Deploy
 
 ```cmd
 copy /Y D:\eclipse-workspace\cmdb\target\cmdb.war D:\glassfish7\glassfish\domains\domain1\autodeploy\cmdb.war
 ```
 
-### 3. Verify
+### 4. Configure the app process
+
+```cmd
+set MONGODB_URI=mongodb://localhost:27017
+set MONGODB_DB=cmdb
+```
+
+### 5. Verify
 
 ```text
 http://localhost:8080/cmdb/
 http://localhost:8080/cmdb/health
 http://localhost:8080/cmdb/assets
-```
-
-### 4. If `/assets` should work
-
-Make sure the deployed GlassFish process has MongoDB configuration:
-
-```cmd
-set MONGODB_URI=mongodb://localhost:27017
-set MONGODB_DB=cmdb
 ```
 
 ---
@@ -519,6 +593,7 @@ set MONGODB_DB=cmdb
 | `src/main/java/com/xhait/ti/cmdb/assets/Asset.java` | asset model |
 | `src/main/java/com/xhait/ti/cmdb/assets/AssetsDao.java` | MongoDB persistence for assets |
 | `src/main/java/com/xhait/ti/cmdb/mongo/MongoClientProvider.java` | Mongo client/database configuration |
+| `mongo/bootstrap-cmdb.js` | ready-to-run `mongosh` bootstrap and seed script |
 | `src/main/java/com/xhait/ti/cmdb/web/AssetsServlet.java` | assets list/create web endpoint |
 | `src/main/java/com/xhait/ti/cmdb/web/HealthServlet.java` | health endpoint |
 | `src/main/java/com/xhait/ti/cmdb/web/LogDirInitializer.java` | startup log directory creation |
