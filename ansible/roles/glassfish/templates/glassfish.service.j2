@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Eclipse GlassFish {{ glassfish_version }}
+After=network.target
+
+[Service]
+Type=forking
+User={{ glassfish_user }}
+Group={{ glassfish_group }}
+
+Environment="JAVA_HOME={{ java_home }}"
+Environment="AS_JAVA={{ java_home }}"
+
+ExecStart={{ glassfish_install_dir }}/glassfish/bin/asadmin start-domain {{ glassfish_domain }}
+ExecStop={{ glassfish_install_dir }}/glassfish/bin/asadmin stop-domain {{ glassfish_domain }}
+ExecReload={{ glassfish_install_dir }}/glassfish/bin/asadmin restart-domain {{ glassfish_domain }}
+
+TimeoutStartSec=180
+TimeoutStopSec=60
+Restart=on-failure
+RestartSec=10
+
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

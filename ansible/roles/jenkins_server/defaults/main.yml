@@ -1,0 +1,22 @@
+# roles/jenkins_server/defaults/main.yml
+---
+jenkins_http_port: 8080
+jenkins_home: "/var/lib/jenkins"
+jenkins_repo_url: "https://pkg.jenkins.io/redhat-stable/jenkins.repo"
+jenkins_repo_key: "https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key"
+jenkins_plugins:
+  - git
+  - pipeline-stage-view
+  - pipeline-utility-steps
+  - workflow-aggregator
+  - credentials-binding
+  - ansible
+  - maven-plugin
+  - timestamper
+  - ws-cleanup
+  - ssh-agent
+  - job-dsl
+  - blueocean
+  - owasp-dependency-check
+maven_version: "3.9.7"
+maven_install_dir: "/opt/maven"

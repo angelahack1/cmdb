@@ -1,40 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="warn" monitorInterval="60">
-  <Properties>
-    <Property name="LOG_DIR">D:/log_apps</Property>
-    <Property name="LOG_FILE">${LOG_DIR}/cmbd.log</Property>
-    <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %c{1.} - %msg%n</Property>
-  </Properties>
+<Configuration status="WARN" monitorInterval="30">
 
-  <Appenders>
-    <RollingFile name="File"
-                 fileName="${LOG_FILE}"
-                 filePattern="${LOG_DIR}/cmbd-%d{yyyy-MM-dd}-%i.log.gz">
-      <PatternLayout pattern="${LOG_PATTERN}"/>
-      <Policies>
-        <TimeBasedTriggeringPolicy/>
-        <SizeBasedTriggeringPolicy size="10 MB"/>
-      </Policies>
-      <DefaultRolloverStrategy max="10"/>
-    </RollingFile>
+    <Properties>
+        <Property name="LOG_DIR">D:/log_apps</Property>
+        <Property name="PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
+    </Properties>
 
-    <Console name="Console" target="SYSTEM_OUT">
-      <PatternLayout pattern="${LOG_PATTERN}"/>
-    </Console>
-  </Appenders>
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${PATTERN}" />
+        </Console>
 
-  <Loggers>
-    <Logger name="com.xhait.ti.cmdb" level="debug" additivity="false">
-      <AppenderRef ref="File"/>
-      <AppenderRef ref="Console"/>
-  </Logger>
+        <RollingFile name="AppFile"
+                     fileName="${LOG_DIR}/cmdb/cmdb.log"
+                     filePattern="${LOG_DIR}/cmdb-app-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${PATTERN}" />
+            <Policies>
+                <SizeBasedTriggeringPolicy size="50MB" />
+                <TimeBasedTriggeringPolicy interval="1" />
+            </Policies>
+            <DefaultRolloverStrategy max="30" />
+        </RollingFile>
+    </Appenders>
 
-  <Logger name="org.mongodb" level="info"/>
-  <Logger name="com.mongodb" level="info"/>
+    <Loggers>
+        <Logger name="com.xhait.ti.cmdb" level="DEBUG" additivity="false">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="AppFile" />
+        </Logger>
 
-  <Root level="info">
-    <AppenderRef ref="File"/>
-    <AppenderRef ref="Console"/>
-  </Root>
- </Loggers>
+        <Logger name="org.mongodb.driver" level="WARN" additivity="false">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="AppFile" />
+        </Logger>
+
+        <Root level="INFO">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="AppFile" />
+        </Root>
+    </Loggers>
 </Configuration>

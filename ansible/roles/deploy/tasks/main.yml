@@ -1,0 +1,98 @@
+# roles/deploy/tasks/main.yml
+# ───────────────────────────────────────────────────────────
+# Zero-downtime WAR deployment to GlassFish 7
+# ───────────────────────────────────────────────────────────
+---
+- name: Validate WAR source is provided
+  ansible.builtin.assert:
+    that:
+      - app_war_source | length > 0
+    fail_msg: "app_war_source must point to the WAR file to deploy"
+  tags: [deploy]
+
+- name: Create backup directory
+  ansible.builtin.file:
+    path: "{{ deploy_backup_dir }}"
+    state: directory
+    owner: "{{ glassfish_user }}"
+    group: "{{ glassfish_group }}"
+    mode: "0755"
+  tags: [deploy]
+
+- name: Check for existing deployment
+  ansible.builtin.stat:
+    path: "{{ glassfish_install_dir }}/glassfish/domains/{{ glassfish_domain }}/autodeploy/{{ app_war_name }}"
+  register: existing_war
+  tags: [deploy]
+
+- name: Backup existing WAR before redeploy
+  ansible.builtin.copy:
+    src: "{{ glassfish_install_dir }}/glassfish/domains/{{ glassfish_domain }}/autodeploy/{{ app_war_name }}"
+    dest: "{{ deploy_backup_dir }}/{{ app_war_name }}.{{ ansible_date_time.iso8601_basic_short }}.bak"
+    remote_src: true
+  when: existing_war.stat.exists
+  tags: [deploy]
+
+- name: Undeploy existing application
+  ansible.builtin.command: >
+    {{ glassfish_install_dir }}/glassfish/bin/asadmin
+    --user {{ glassfish_admin_user }}
+    --passwordfile {{ glassfish_install_dir }}/.pwdfile
+    undeploy {{ app_name }}
+  register: undeploy_result
+  changed_when: "'undeployed' in undeploy_result.stdout"
+  failed_when: false
+  when: existing_war.stat.exists
+  tags: [deploy]
+
+- name: Copy WAR to target host
+  ansible.builtin.copy:
+    src: "{{ app_war_source }}"
+    dest: "/tmp/{{ app_war_name }}"
+    owner: "{{ glassfish_user }}"
+    group: "{{ glassfish_group }}"
+    mode: "0644"
+  tags: [deploy]
+
+- name: Deploy WAR via asadmin
+  ansible.builtin.command: >
+    {{ glassfish_install_dir }}/glassfish/bin/asadmin
+    --user {{ glassfish_admin_user }}
+    --passwordfile {{ glassfish_install_dir }}/.pwdfile
+    deploy
+    --contextroot {{ app_context_root }}
+    --name {{ app_name }}
+    --force=true
+    /tmp/{{ app_war_name }}
+  register: deploy_result
+  changed_when: "'deployed' in deploy_result.stdout"
+  notify: verify deployment
+  tags: [deploy]
+
+- name: Show deploy result
+  ansible.builtin.debug:
+    msg: "{{ deploy_result.stdout }}"
+  tags: [deploy]
+
+- name: Health check – wait for application
+  ansible.builtin.uri:
+    url: "{{ deploy_health_url }}"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: health
+  retries: "{{ deploy_health_retries }}"
+  delay: "{{ deploy_health_delay }}"
+  until: health.status == 200
+  tags: [deploy, healthcheck]
+
+- name: Display health check result
+  ansible.builtin.debug:
+    msg: "Health check passed: {{ health.content | default('N/A') | trim }}"
+  tags: [deploy, healthcheck]
+
+- name: Clean up temp WAR
+  ansible.builtin.file:
+    path: "/tmp/{{ app_war_name }}"
+    state: absent
+  tags: [deploy]

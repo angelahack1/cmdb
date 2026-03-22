@@ -1,5 +1,8 @@
 package com.xhait.ti.cmdb.mongo;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
@@ -13,11 +16,20 @@ import org.apache.logging.log4j.Logger;
  * Lazily creates and reuses a single MongoClient.
  *
  * Configuration order:
- * 1) Environment variables: MONGODB_URI, MONGODB_DB
- * 2) System properties: mongodb.uri, mongodb.db
+ * 1) Explicit environment variables: MONGODB_URI, MONGODB_DB
+ * 2) Explicit system properties: mongodb.uri, mongodb.db
+ * 3) Separate host/auth settings: MONGODB_HOST, MONGODB_PORT, MONGODB_USER,
+ *    MONGODB_PASSWORD, MONGODB_AUTH_DB (or matching system properties)
+ * 4) Local demo defaults: localhost:27017, cmdb, cmdbApp/changeme
  */
 public final class MongoClientProvider {
 	private static final Logger log = LogManager.getLogger(MongoClientProvider.class);
+	private static final String DEFAULT_HOST = "localhost";
+	private static final String DEFAULT_PORT = "27017";
+	private static final String DEFAULT_DATABASE = "cmdb";
+	private static final String DEFAULT_USERNAME = "cmdbApp";
+	private static final String DEFAULT_PASSWORD = "changeme";
+
 	private static volatile MongoClient client;
 
 	private MongoClientProvider() {
@@ -51,27 +63,31 @@ public final class MongoClientProvider {
 
 	public static String getDatabaseName() {
 		log.debug("ENTER getDatabaseName()");
-		String db = firstNonBlank(System.getenv("MONGODB_DB"), System.getProperty("mongodb.db"));
-		if (isBlank(db)) {
-			log.error("MongoDB database name not configured (MONGODB_DB / mongodb.db)");
-			throw new IllegalStateException(
-					"MongoDB database name is not configured. Set env MONGODB_DB or system property mongodb.db.");
-		}
-		log.info("Mongo DB name configured: {}", db);
+		String db = resolveDatabaseName(System.getenv("MONGODB_DB"), System.getProperty("mongodb.db"));
+		log.info("Mongo DB name resolved: {}", db);
 		log.debug("EXIT getDatabaseName() -> {}", db);
 		return db;
 	}
 
 	private static MongoClient createClient() {
 		log.debug("ENTER createClient()");
-		String uri = firstNonBlank(System.getenv("MONGODB_URI"), System.getProperty("mongodb.uri"));
-		if (isBlank(uri)) {
-			log.error("MongoDB URI not configured (MONGODB_URI / mongodb.uri)");
-			throw new IllegalStateException(
-					"MongoDB connection URI is not configured. Set env MONGODB_URI or system property mongodb.uri.");
-		}
+		String uri = resolveConnectionUri(
+				System.getenv("MONGODB_URI"),
+				System.getProperty("mongodb.uri"),
+				System.getenv("MONGODB_HOST"),
+				System.getProperty("mongodb.host"),
+				System.getenv("MONGODB_PORT"),
+				System.getProperty("mongodb.port"),
+				System.getenv("MONGODB_DB"),
+				System.getProperty("mongodb.db"),
+				System.getenv("MONGODB_USER"),
+				System.getProperty("mongodb.user"),
+				System.getenv("MONGODB_PASSWORD"),
+				System.getProperty("mongodb.password"),
+				System.getenv("MONGODB_AUTH_DB"),
+				System.getProperty("mongodb.authDb"));
 
-		log.info("MongoDB URI configured (redacted)");
+		log.info("MongoDB URI resolved (redacted)");
 		ConnectionString cs = new ConnectionString(uri);
 		MongoClientSettings settings = MongoClientSettings.builder().applyConnectionString(cs).build();
 		MongoClient c = MongoClients.create(settings);
@@ -79,8 +95,72 @@ public final class MongoClientProvider {
 		return c;
 	}
 
-	private static String firstNonBlank(String a, String b) {
-		return !isBlank(a) ? a : b;
+	static String resolveDatabaseName(String envDb, String propertyDb) {
+		return firstNonBlank(envDb, propertyDb, DEFAULT_DATABASE);
+	}
+
+	static String resolveConnectionUri(
+			String envUri,
+			String propertyUri,
+			String envHost,
+			String propertyHost,
+			String envPort,
+			String propertyPort,
+			String envDb,
+			String propertyDb,
+			String envUser,
+			String propertyUser,
+			String envPassword,
+			String propertyPassword,
+			String envAuthDb,
+			String propertyAuthDb) {
+		String explicitUri = firstNonBlank(envUri, propertyUri);
+		if (!isBlank(explicitUri)) {
+			return explicitUri.trim();
+		}
+
+		String db = resolveDatabaseName(envDb, propertyDb);
+		String host = firstNonBlank(envHost, propertyHost, DEFAULT_HOST);
+		String port = firstNonBlank(envPort, propertyPort, DEFAULT_PORT);
+		String user = firstNonBlank(envUser, propertyUser, DEFAULT_USERNAME);
+		String password = firstNonBlank(envPassword, propertyPassword, DEFAULT_PASSWORD);
+		String authDb = firstNonBlank(envAuthDb, propertyAuthDb, db);
+		return buildConnectionUri(host, port, db, user, password, authDb);
+	}
+
+	static String buildConnectionUri(String host, String port, String db, String user, String password, String authDb) {
+		String safeHost = firstNonBlank(host, DEFAULT_HOST);
+		String safePort = firstNonBlank(port, DEFAULT_PORT);
+		String safeDb = firstNonBlank(db, DEFAULT_DATABASE);
+		String safeUser = firstNonBlank(user, DEFAULT_USERNAME);
+		String safePassword = firstNonBlank(password, DEFAULT_PASSWORD);
+		String safeAuthDb = firstNonBlank(authDb, safeDb);
+
+		return "mongodb://"
+				+ urlEncode(safeUser)
+				+ ":"
+				+ urlEncode(safePassword)
+				+ "@"
+				+ safeHost
+				+ ":"
+				+ safePort
+				+ "/"
+				+ safeDb
+				+ "?authSource="
+				+ safeAuthDb;
+	}
+
+	private static String urlEncode(String value) {
+		return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+	}
+
+	private static String firstNonBlank(String... values) {
+		for (String value : values) {
+			if (!isBlank(value)) {
+				return value.trim();
+			}
+		}
+		return null;
 	}
 
 	private static boolean isBlank(String s) {

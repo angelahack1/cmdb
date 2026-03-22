@@ -1,0 +1,13 @@
+# roles/glassfish/defaults/main.yml
+---
+glassfish_version: "7.0.14"
+glassfish_download_url: "https://github.com/eclipse-ee4j/glassfish/releases/download/{{ glassfish_version }}/glassfish-{{ glassfish_version }}.zip"
+glassfish_install_dir: "/opt/glassfish7"
+glassfish_domain: "domain1"
+glassfish_admin_user: "admin"
+glassfish_admin_password: "admin"
+glassfish_http_port: 8080
+glassfish_https_port: 8181
+glassfish_admin_port: 4848
+glassfish_user: "glassfish"
+glassfish_group: "glassfish"

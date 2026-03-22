@@ -1,0 +1,6 @@
+# roles/mongodb/handlers/main.yml
+---
+- name: restart mongod
+  ansible.builtin.systemd:
+    name: mongod
+    state: restarted

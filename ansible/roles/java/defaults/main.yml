@@ -1,0 +1,5 @@
+# roles/java/defaults/main.yml
+---
+java_major_version: "17"
+java_package: "java-17-openjdk-devel"
+java_home: "/usr/lib/jvm/java-17-openjdk"

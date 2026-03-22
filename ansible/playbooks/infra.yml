@@ -1,0 +1,14 @@
+# ansible/playbooks/infra.yml
+# ───────────────────────────────────────────────────────────
+# Baseline infrastructure: common hardening + Java on all hosts
+# ───────────────────────────────────────────────────────────
+---
+- name: Common baseline for all hosts
+  hosts: all
+  become: true
+  vars_files:
+    - "{{ playbook_dir }}/../vault/vault_secrets.yml"
+  roles:
+    - common
+    - java
+  tags: [infra]

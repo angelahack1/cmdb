@@ -1,0 +1,13 @@
+# ansible/playbooks/database.yml
+# ───────────────────────────────────────────────────────────
+# MongoDB 7.0 installation, user provisioning, and seed data
+# ───────────────────────────────────────────────────────────
+---
+- name: Provision MongoDB servers
+  hosts: dbservers
+  become: true
+  vars_files:
+    - "{{ playbook_dir }}/../vault/vault_secrets.yml"
+  roles:
+    - mongodb
+  tags: [database]

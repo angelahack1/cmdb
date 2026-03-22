@@ -1,0 +1,105 @@
+# roles/jenkins_server/tasks/main.yml
+---
+- name: Import Jenkins GPG key
+  ansible.builtin.rpm_key:
+    key: "{{ jenkins_repo_key }}"
+    state: present
+  tags: [jenkins]
+
+- name: Add Jenkins YUM repository
+  ansible.builtin.get_url:
+    url: "{{ jenkins_repo_url }}"
+    dest: /etc/yum.repos.d/jenkins.repo
+    mode: "0644"
+  tags: [jenkins]
+
+- name: Install Jenkins
+  ansible.builtin.yum:
+    name: jenkins
+    state: present
+  tags: [jenkins]
+
+- name: Set Jenkins HTTP port
+  ansible.builtin.lineinfile:
+    path: /usr/lib/systemd/system/jenkins.service
+    regexp: "^Environment=\"JENKINS_PORT="
+    line: 'Environment="JENKINS_PORT={{ jenkins_http_port }}"'
+  notify: reload systemd for jenkins
+  tags: [jenkins, config]
+
+- name: Ensure JENKINS_HOME exists
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+  tags: [jenkins]
+
+- name: Enable and start Jenkins
+  ansible.builtin.systemd:
+    name: jenkins
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: [jenkins]
+
+- name: Wait for Jenkins to become available
+  ansible.builtin.wait_for:
+    port: "{{ jenkins_http_port }}"
+    host: 0.0.0.0
+    delay: 10
+    timeout: 120
+  tags: [jenkins]
+
+- name: Install Maven {{ maven_version }}
+  ansible.builtin.unarchive:
+    src: "https://archive.apache.org/dist/maven/maven-3/{{ maven_version }}/binaries/apache-maven-{{ maven_version }}-bin.tar.gz"
+    dest: "{{ maven_install_dir }}"
+    remote_src: true
+    creates: "{{ maven_install_dir }}/apache-maven-{{ maven_version }}"
+  tags: [jenkins, maven]
+
+- name: Create Maven symlink
+  ansible.builtin.file:
+    src: "{{ maven_install_dir }}/apache-maven-{{ maven_version }}"
+    dest: "{{ maven_install_dir }}/current"
+    state: link
+  tags: [jenkins, maven]
+
+- name: Set Maven in PATH via profile.d
+  ansible.builtin.copy:
+    dest: /etc/profile.d/maven.sh
+    content: |
+      export MAVEN_HOME={{ maven_install_dir }}/current
+      export PATH=$MAVEN_HOME/bin:$PATH
+    mode: "0644"
+  tags: [jenkins, maven]
+
+- name: Install Ansible on Jenkins node (for pipeline use)
+  ansible.builtin.package:
+    name:
+      - ansible-core
+      - python3-pip
+    state: present
+  tags: [jenkins, ansible]
+
+- name: Install Jenkins CLI plugins
+  ansible.builtin.command: >
+    java -jar {{ jenkins_home }}/war/WEB-INF/jenkins-cli.jar
+    -s http://localhost:{{ jenkins_http_port }}
+    install-plugin {{ item }}
+  loop: "{{ jenkins_plugins }}"
+  register: plugin_install
+  changed_when: "'already installed' not in plugin_install.stdout"
+  failed_when: false
+  tags: [jenkins, plugins]
+
+- name: Copy Jenkinsfile into Jenkins home for reference
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../jenkins/Jenkinsfile"
+    dest: "{{ jenkins_home }}/cmdb-Jenkinsfile"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+  tags: [jenkins]

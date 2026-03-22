@@ -1,0 +1,13 @@
+# ansible/playbooks/appserver.yml
+# ───────────────────────────────────────────────────────────
+# GlassFish 7 installation and JVM configuration
+# ───────────────────────────────────────────────────────────
+---
+- name: Provision GlassFish application servers
+  hosts: appservers
+  become: true
+  vars_files:
+    - "{{ playbook_dir }}/../vault/vault_secrets.yml"
+  roles:
+    - glassfish
+  tags: [appserver]

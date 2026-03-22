@@ -9,20 +9,28 @@
  * 5) prints a verification summary
  *
  * Usage examples:
- *   mongosh mongodb://localhost:27017/cmdb --file mongo/bootstrap-cmdb.js
- *   mongosh "mongodb://localhost:27017" --eval "var APP_DB='cmdb'" --file mongo/bootstrap-cmdb.js
+ *   mongosh "mongodb://cmdbApp:changeme@localhost:27017/cmdb?authSource=cmdb" --file mongo/bootstrap-cmdb.js
+ *   mongosh "mongodb://localhost:27017" --eval "var APP_DB='cmdb'; var APP_USER='cmdbApp'; var APP_PASSWORD='changeme'" --file mongo/bootstrap-cmdb.js
  *
  * Optional variables before running:
  *   APP_DB          -> database name to use (default: "cmdb")
+ *   APP_USER        -> application user for the printed connection example (default: "cmdbApp")
+ *   APP_PASSWORD    -> application password for the printed connection example (default: "changeme")
+ *   AUTH_DB         -> authSource database for the printed connection example (default: APP_DB)
  *   DROP_FIRST      -> true to drop the target database first (default: false)
  *   RESEED_ASSETS   -> true to wipe only the Assets collection before reseeding (default: false)
  */
 
 (function () {
   const dbName = typeof APP_DB !== 'undefined' && APP_DB ? APP_DB : 'cmdb';
+  const appUser = typeof APP_USER !== 'undefined' && APP_USER ? APP_USER : 'cmdbApp';
+  const appPassword = typeof APP_PASSWORD !== 'undefined' && APP_PASSWORD ? APP_PASSWORD : 'changeme';
+  const authDb = typeof AUTH_DB !== 'undefined' && AUTH_DB ? AUTH_DB : dbName;
   const dropFirst = typeof DROP_FIRST !== 'undefined' ? !!DROP_FIRST : false;
   const reseedAssets = typeof RESEED_ASSETS !== 'undefined' ? !!RESEED_ASSETS : false;
   const collectionName = 'Assets';
+  const appUri = 'mongodb://' + encodeURIComponent(appUser) + ':' + encodeURIComponent(appPassword)
+    + '@localhost:27017/' + dbName + '?authSource=' + encodeURIComponent(authDb);
 
   const targetDb = db.getSiblingDB(dbName);
 
@@ -141,8 +149,10 @@
 
   print('');
   print('App configuration to match this bootstrap:');
-  print('  MONGODB_URI=mongodb://localhost:27017');
+  print('  MONGODB_URI=' + appUri);
   print('  MONGODB_DB=' + dbName);
+  print('  MONGODB_USER=' + appUser);
+  print('  MONGODB_PASSWORD=' + appPassword);
   print('');
   print('Done.');
 })();

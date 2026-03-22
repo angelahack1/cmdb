@@ -64,13 +64,14 @@ public class AssetsServlet extends HttpServlet {
 		log.debug("ENTER sendConfigError message={}", ex.getMessage());
 		resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 		resp.setContentType("text/html; charset=UTF-8");
-		resp.getWriter().println("<!doctype html><html><head><meta charset='utf-8'><title>MongoDB not configured</title></head><body>");
-		resp.getWriter().println("<h1>MongoDB connection isn't configured</h1>");
-		resp.getWriter().println("<p>This demo expects the following settings:</p>");
-		resp.getWriter().println("<ul>" +
-				"<li><code>MONGODB_URI</code> (e.g. <code>mongodb://localhost:27017</code>)</li>" +
-				"<li><code>MONGODB_DB</code> (e.g. <code>cmdb</code>)</li>" +
-				"</ul>");
+		resp.getWriter().println("<!doctype html><html><head><meta charset='utf-8'><title>MongoDB connection failed</title></head><body>");
+		resp.getWriter().println("<h1>MongoDB connection failed</h1>");
+		resp.getWriter().println("<p>The app checks these settings in order:</p>");
+		resp.getWriter().println("<ul>"
+				+ "<li><code>MONGODB_URI</code> or <code>mongodb.uri</code></li>"
+				+ "<li><code>MONGODB_HOST</code>, <code>MONGODB_PORT</code>, <code>MONGODB_DB</code>, <code>MONGODB_USER</code>, <code>MONGODB_PASSWORD</code>, and optional <code>MONGODB_AUTH_DB</code></li>"
+				+ "<li>Local demo defaults: <code>mongodb://cmdbApp:changeme@localhost:27017/cmdb?authSource=cmdb</code></li>"
+				+ "</ul>");
 		resp.getWriter().println("<p>Error: <code>" + escape(ex.getMessage()) + "</code></p>");
 		resp.getWriter().println("</body></html>");
 		log.debug("EXIT sendConfigError()");

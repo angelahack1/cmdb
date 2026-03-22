@@ -1,0 +1,258 @@
+// jenkins/Jenkinsfile
+// ────────────────────────────────────────────────────────────
+// CMDB – Full CI/CD Declarative Pipeline
+//
+// Stages:
+//   1. Checkout
+//   2. Build + Unit Tests (Maven)
+//   3. OWASP Dependency-Check (activates pom profile: dependency-check)
+//   4. Archive Artifacts
+//   5. Deploy to DEV (Ansible)
+//   6. Smoke Test
+//   7. Deploy to STAGING (manual gate)
+//   8. Deploy to PROD (manual gate)
+//
+// The pom.xml profiles that matter here:
+//   - dependency-check   → OWASP scan via verify phase
+//   - launch-dependency-report → auto-deactivates on Jenkins (checks !env.JENKINS_URL)
+//   - autodeploy         → NOT used; Ansible handles deployment instead
+// ────────────────────────────────────────────────────────────
+
+pipeline {
+    agent any
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        timestamps()
+        timeout(time: 45, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        JAVA_HOME        = '/usr/lib/jvm/java-17-openjdk'
+        MAVEN_HOME       = '/opt/maven/current'
+        PATH             = "${MAVEN_HOME}/bin:${JAVA_HOME}/bin:${env.PATH}"
+        ANSIBLE_DIR      = "${WORKSPACE}/ansible"
+        VAULT_PASS_FILE  = credentials('ansible-vault-password')
+        WAR_FILE         = 'target/cmdb.war'
+        APP_NAME         = 'cmdb'
+
+        // OWASP NVD API key (configure in Jenkins → Credentials → Secret text)
+        NVD_API_KEY      = credentials('nvd-api-key')
+    }
+
+    parameters {
+        choice(
+            name: 'TARGET_ENV',
+            choices: ['dev', 'staging', 'prod'],
+            description: 'Target environment for deployment'
+        )
+        booleanParam(
+            name: 'SKIP_OWASP',
+            defaultValue: false,
+            description: 'Skip OWASP dependency check (faster builds)'
+        )
+        booleanParam(
+            name: 'RUN_ANSIBLE_PROVISION',
+            defaultValue: false,
+            description: 'Run full infrastructure provisioning before deploy'
+        )
+    }
+
+    stages {
+
+        // ── STAGE 1: Checkout ──────────────────────────────
+        stage('Checkout') {
+            steps {
+                cleanWs()
+                checkout scm
+                sh 'echo "Branch: ${GIT_BRANCH}  Commit: ${GIT_COMMIT}"'
+            }
+        }
+
+        // ── STAGE 2: Build ─────────────────────────────────
+        stage('Build & Test') {
+            steps {
+                sh '''
+                    echo "──────── Maven Build ────────"
+                    mvn clean package \
+                        -DskipTests=false \
+                        -B -V
+                '''
+            }
+            post {
+                always {
+                    junit testResults: '**/target/surefire-reports/*.xml',
+                         allowEmptyResults: true
+                }
+                success {
+                    echo "Build succeeded – WAR at ${WAR_FILE}"
+                }
+            }
+        }
+
+        // ── STAGE 3: OWASP Dependency Check ────────────────
+        // Activates the pom.xml 'dependency-check' profile which runs
+        // dependency-check-maven:check at the verify phase.
+        // The 'launch-dependency-report' profile auto-deactivates on
+        // Jenkins because it checks for !env.JENKINS_URL.
+        stage('OWASP Dependency-Check') {
+            when {
+                expression { return !params.SKIP_OWASP }
+            }
+            steps {
+                sh '''
+                    echo "──────── OWASP Dependency-Check ────────"
+                    mvn verify \
+                        -P dependency-check \
+                        -Ddependency-check.skip=false \
+                        -B
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'target/dependency-check-report/**',
+                                     allowEmptyArchive: true
+                    publishHTML(target: [
+                        reportName: 'OWASP Dependency-Check',
+                        reportDir: 'target/dependency-check-report',
+                        reportFiles: 'dependency-check-report.html',
+                        keepAll: true,
+                        alwaysLinkToLastBuild: true
+                    ])
+                }
+            }
+        }
+
+        // ── STAGE 4: Archive Artifacts ─────────────────────
+        stage('Archive') {
+            steps {
+                archiveArtifacts artifacts: "${WAR_FILE}",
+                                 fingerprint: true
+                stash name: 'war-stash', includes: "${WAR_FILE}"
+            }
+        }
+
+        // ── STAGE 5: Ansible Provision (optional) ──────────
+        stage('Provision Infrastructure') {
+            when {
+                expression { return params.RUN_ANSIBLE_PROVISION }
+            }
+            steps {
+                dir("${ANSIBLE_DIR}") {
+                    sh """
+                        echo "──────── Ansible: Full Stack Provisioning (${params.TARGET_ENV}) ────────"
+                        ansible-playbook \
+                            -i inventories/${params.TARGET_ENV}/hosts.yml \
+                            playbooks/site.yml \
+                            --vault-password-file ${VAULT_PASS_FILE} \
+                            -v
+                    """
+                }
+            }
+        }
+
+        // ── STAGE 6: Deploy to DEV ─────────────────────────
+        stage('Deploy to DEV') {
+            when {
+                expression { return params.TARGET_ENV == 'dev' }
+            }
+            steps {
+                unstash 'war-stash'
+                dir("${ANSIBLE_DIR}") {
+                    sh """
+                        echo "──────── Ansible Deploy → DEV ────────"
+                        ansible-playbook \
+                            -i inventories/dev/hosts.yml \
+                            playbooks/deploy.yml \
+                            -e "app_war_source=${WORKSPACE}/${WAR_FILE}" \
+                            --vault-password-file ${VAULT_PASS_FILE} \
+                            -v
+                    """
+                }
+            }
+        }
+
+        // ── STAGE 7: Smoke Test ────────────────────────────
+        stage('Smoke Test') {
+            when {
+                expression { return params.TARGET_ENV == 'dev' }
+            }
+            steps {
+                script {
+                    def healthUrl = "http://cmdb-dev-app01:8080/cmdb/health"
+                    def response = sh(
+                        script: "curl -sf --max-time 15 ${healthUrl}",
+                        returnStdout: true
+                    ).trim()
+                    if (!response.contains('OK')) {
+                        error("Smoke test failed! Response: ${response}")
+                    }
+                    echo "Smoke test passed: ${response}"
+                }
+            }
+        }
+
+        // ── STAGE 8: Deploy to STAGING ─────────────────────
+        stage('Deploy to STAGING') {
+            when {
+                expression { return params.TARGET_ENV == 'staging' }
+            }
+            steps {
+                input message: 'Deploy to STAGING?', ok: 'Deploy'
+                unstash 'war-stash'
+                dir("${ANSIBLE_DIR}") {
+                    sh """
+                        echo "──────── Ansible Deploy → STAGING ────────"
+                        ansible-playbook \
+                            -i inventories/staging/hosts.yml \
+                            playbooks/deploy.yml \
+                            -e "app_war_source=${WORKSPACE}/${WAR_FILE}" \
+                            --vault-password-file ${VAULT_PASS_FILE} \
+                            -v
+                    """
+                }
+            }
+        }
+
+        // ── STAGE 9: Deploy to PROD ────────────────────────
+        stage('Deploy to PROD') {
+            when {
+                expression { return params.TARGET_ENV == 'prod' }
+            }
+            steps {
+                input message: 'Deploy to PRODUCTION? This is a LIVE environment.',
+                      ok: 'Deploy to PROD',
+                      submitter: 'admin,ops-team'
+                unstash 'war-stash'
+                dir("${ANSIBLE_DIR}") {
+                    sh """
+                        echo "──────── Ansible Deploy → PROD (rolling) ────────"
+                        ansible-playbook \
+                            -i inventories/prod/hosts.yml \
+                            playbooks/deploy.yml \
+                            -e "app_war_source=${WORKSPACE}/${WAR_FILE}" \
+                            --vault-password-file ${VAULT_PASS_FILE} \
+                            -v
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully for ${APP_NAME} [${params.TARGET_ENV}]"
+        }
+        failure {
+            echo "Pipeline FAILED for ${APP_NAME} [${params.TARGET_ENV}]"
+            // Uncomment to add email notifications:
+            // mail to: 'angela@xaiht.com',
+            //      subject: "CMDB Pipeline FAILED – Build #${BUILD_NUMBER}",
+            //      body: "Check console: ${BUILD_URL}"
+        }
+        always {
+            cleanWs()
+        }
+    }
+}

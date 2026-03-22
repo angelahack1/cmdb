@@ -1,0 +1,10 @@
+# roles/deploy/handlers/main.yml
+---
+- name: verify deployment
+  ansible.builtin.command: >
+    {{ glassfish_install_dir }}/glassfish/bin/asadmin
+    --user {{ glassfish_admin_user }}
+    --passwordfile {{ glassfish_install_dir }}/.pwdfile
+    list-applications
+  register: app_list
+  changed_when: false

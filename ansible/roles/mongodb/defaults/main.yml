@@ -1,0 +1,12 @@
+# roles/mongodb/defaults/main.yml
+---
+mongodb_version: "7.0"
+mongodb_port: 27017
+mongodb_bind_ip: "0.0.0.0"
+mongodb_data_dir: "/var/lib/mongo"
+mongodb_log_dir: "/var/log/mongodb"
+mongodb_admin_user: "cmdbAdmin"
+mongodb_admin_password: "changeme"
+mongodb_app_user: "cmdbApp"
+mongodb_app_password: "changeme"
+mongodb_app_db: "cmdb"

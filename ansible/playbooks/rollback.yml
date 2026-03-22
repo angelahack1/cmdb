@@ -1,0 +1,71 @@
+# ansible/playbooks/rollback.yml
+# ───────────────────────────────────────────────────────────
+# Rollback: redeploy the most recent backup WAR
+#
+# Usage:
+#   ansible-playbook -i inventories/dev/hosts.yml playbooks/rollback.yml \
+#       --vault-password-file ~/.ansible/vault_pass_cmdb
+# ───────────────────────────────────────────────────────────
+---
+- name: Rollback CMDB to previous version
+  hosts: appservers
+  become: true
+  serial: 1
+  vars_files:
+    - "{{ playbook_dir }}/../vault/vault_secrets.yml"
+  vars:
+    deploy_backup_dir: "/opt/cmdb/backups"
+  tasks:
+    - name: Find latest backup WAR
+      ansible.builtin.shell: >
+        ls -1t {{ deploy_backup_dir }}/{{ app_war_name }}.*.bak 2>/dev/null | head -1
+      register: latest_backup
+      changed_when: false
+      tags: [rollback]
+
+    - name: Fail if no backup found
+      ansible.builtin.fail:
+        msg: "No backup WAR found in {{ deploy_backup_dir }}"
+      when: latest_backup.stdout | length == 0
+      tags: [rollback]
+
+    - name: Display backup being restored
+      ansible.builtin.debug:
+        msg: "Rolling back to: {{ latest_backup.stdout }}"
+      tags: [rollback]
+
+    - name: Undeploy current application
+      ansible.builtin.command: >
+        {{ glassfish_install_dir }}/glassfish/bin/asadmin
+        --user {{ glassfish_admin_user }}
+        --passwordfile {{ glassfish_install_dir }}/.pwdfile
+        undeploy {{ app_name }}
+      register: undeploy_result
+      changed_when: "'undeployed' in undeploy_result.stdout"
+      failed_when: false
+      tags: [rollback]
+
+    - name: Deploy backup WAR
+      ansible.builtin.command: >
+        {{ glassfish_install_dir }}/glassfish/bin/asadmin
+        --user {{ glassfish_admin_user }}
+        --passwordfile {{ glassfish_install_dir }}/.pwdfile
+        deploy
+        --contextroot {{ app_context_root }}
+        --name {{ app_name }}
+        --force=true
+        {{ latest_backup.stdout }}
+      register: rollback_deploy
+      changed_when: "'deployed' in rollback_deploy.stdout"
+      tags: [rollback]
+
+    - name: Health check after rollback
+      ansible.builtin.uri:
+        url: "http://localhost:{{ glassfish_http_port }}{{ app_context_root }}/health"
+        method: GET
+        status_code: 200
+      register: health
+      retries: 12
+      delay: 10
+      until: health.status == 200
+      tags: [rollback, healthcheck]

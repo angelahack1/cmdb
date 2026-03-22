@@ -1,0 +1,126 @@
+# roles/mongodb/tasks/main.yml
+---
+- name: Add MongoDB {{ mongodb_version }} YUM repo
+  ansible.builtin.template:
+    src: mongodb-org.repo.j2
+    dest: /etc/yum.repos.d/mongodb-org-{{ mongodb_version }}.repo
+    mode: "0644"
+  tags: [mongodb, repo]
+
+- name: Install MongoDB server and tools
+  ansible.builtin.yum:
+    name:
+      - mongodb-org
+      - mongodb-mongosh
+    state: present
+  tags: [mongodb]
+
+- name: Create data directory
+  ansible.builtin.file:
+    path: "{{ mongodb_data_dir }}"
+    state: directory
+    owner: mongod
+    group: mongod
+    mode: "0755"
+  tags: [mongodb]
+
+- name: Create log directory
+  ansible.builtin.file:
+    path: "{{ mongodb_log_dir }}"
+    state: directory
+    owner: mongod
+    group: mongod
+    mode: "0755"
+  tags: [mongodb]
+
+- name: Deploy mongod.conf
+  ansible.builtin.template:
+    src: mongod.conf.j2
+    dest: /etc/mongod.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart mongod
+  tags: [mongodb, config]
+
+- name: Enable and start mongod
+  ansible.builtin.systemd:
+    name: mongod
+    enabled: true
+    state: started
+  tags: [mongodb]
+
+- name: Wait for MongoDB port
+  ansible.builtin.wait_for:
+    port: "{{ mongodb_port }}"
+    host: 127.0.0.1
+    delay: 3
+    timeout: 60
+  tags: [mongodb]
+
+- name: Check if admin user exists
+  ansible.builtin.command: >
+    mongosh --quiet --eval
+    "db.getSiblingDB('admin').getUser('{{ mongodb_admin_user }}')"
+    mongodb://127.0.0.1:{{ mongodb_port }}
+  register: mongo_admin_check
+  changed_when: false
+  failed_when: false
+  tags: [mongodb, users]
+
+- name: Create MongoDB admin user
+  ansible.builtin.command: >
+    mongosh --quiet --eval "
+    db.getSiblingDB('admin').createUser({
+      user: '{{ mongodb_admin_user }}',
+      pwd: '{{ mongodb_admin_password }}',
+      roles: [
+        { role: 'userAdminAnyDatabase', db: 'admin' },
+        { role: 'readWriteAnyDatabase', db: 'admin' },
+        { role: 'dbAdminAnyDatabase', db: 'admin' },
+        { role: 'clusterAdmin', db: 'admin' }
+      ]
+    })
+    " mongodb://127.0.0.1:{{ mongodb_port }}
+  when: "'null' in mongo_admin_check.stdout"
+  no_log: true
+  tags: [mongodb, users]
+
+- name: Create application database user
+  ansible.builtin.command: >
+    mongosh --quiet --eval "
+    db.getSiblingDB('{{ mongodb_app_db }}').createUser({
+      user: '{{ mongodb_app_user }}',
+      pwd: '{{ mongodb_app_password }}',
+      roles: [
+        { role: 'readWrite', db: '{{ mongodb_app_db }}' }
+      ]
+    })
+    " mongodb://{{ mongodb_admin_user }}:{{ mongodb_admin_password }}@127.0.0.1:{{ mongodb_port }}/admin
+  register: mongo_app_user_result
+  changed_when: "'ok' in mongo_app_user_result.stdout"
+  failed_when: false
+  no_log: true
+  tags: [mongodb, users]
+
+- name: Copy bootstrap-cmdb.js seed script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../mongo/bootstrap-cmdb.js"
+    dest: /tmp/bootstrap-cmdb.js
+    mode: "0644"
+  tags: [mongodb, seed]
+
+- name: Run bootstrap seed script
+  ansible.builtin.command: >
+    mongosh
+    "mongodb://{{ mongodb_app_user }}:{{ mongodb_app_password }}@127.0.0.1:{{ mongodb_port }}/{{ mongodb_app_db }}?authSource={{ mongodb_app_db }}"
+    --file /tmp/bootstrap-cmdb.js
+  register: seed_result
+  changed_when: "'inserted=' in seed_result.stdout and 'inserted=0' not in seed_result.stdout"
+  no_log: true
+  tags: [mongodb, seed]
+
+- name: Show seed result
+  ansible.builtin.debug:
+    msg: "{{ seed_result.stdout_lines | default([]) }}"
+  tags: [mongodb, seed]

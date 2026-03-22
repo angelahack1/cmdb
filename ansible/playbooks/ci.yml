@@ -1,0 +1,14 @@
+# ansible/playbooks/ci.yml
+# ───────────────────────────────────────────────────────────
+# Jenkins CI/CD server provisioning
+# ───────────────────────────────────────────────────────────
+---
+- name: Provision Jenkins CI server
+  hosts: jenkins
+  become: true
+  vars_files:
+    - "{{ playbook_dir }}/../vault/vault_secrets.yml"
+  roles:
+    - java
+    - jenkins_server
+  tags: [ci]

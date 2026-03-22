@@ -1,0 +1,27 @@
+# roles/java/tasks/main.yml
+---
+- name: Install OpenJDK {{ java_major_version }}
+  ansible.builtin.package:
+    name: "{{ java_package }}"
+    state: present
+  tags: [java]
+
+- name: Set JAVA_HOME in /etc/profile.d
+  ansible.builtin.copy:
+    dest: /etc/profile.d/java.sh
+    content: |
+      export JAVA_HOME={{ java_home }}
+      export PATH=$JAVA_HOME/bin:$PATH
+    mode: "0644"
+  tags: [java]
+
+- name: Verify Java version
+  ansible.builtin.command: java -version
+  register: java_version_check
+  changed_when: false
+  tags: [java]
+
+- name: Display Java version
+  ansible.builtin.debug:
+    msg: "{{ java_version_check.stderr_lines }}"
+  tags: [java]

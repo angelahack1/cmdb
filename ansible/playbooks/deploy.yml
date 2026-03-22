@@ -1,0 +1,22 @@
+# ansible/playbooks/deploy.yml
+# ───────────────────────────────────────────────────────────
+# Deploy CMDB WAR to GlassFish
+#
+# Extra vars required:
+#   -e "app_war_source=/path/to/cmdb.war"
+#
+# Usage:
+#   ansible-playbook -i inventories/dev/hosts.yml playbooks/deploy.yml \
+#       -e "app_war_source=target/cmdb.war" \
+#       --vault-password-file ~/.ansible/vault_pass_cmdb
+# ───────────────────────────────────────────────────────────
+---
+- name: Deploy CMDB application
+  hosts: appservers
+  become: true
+  serial: 1                      # rolling deploy: one host at a time
+  vars_files:
+    - "{{ playbook_dir }}/../vault/vault_secrets.yml"
+  roles:
+    - deploy
+  tags: [deploy]

@@ -1,0 +1,20 @@
+# ansible/playbooks/site.yml
+# ───────────────────────────────────────────────────────────
+# Master playbook – provisions the full CMDB stack
+#
+# Usage:
+#   ansible-playbook -i inventories/dev/hosts.yml playbooks/site.yml \
+#       --vault-password-file ~/.ansible/vault_pass_cmdb
+# ───────────────────────────────────────────────────────────
+---
+- name: Import infrastructure playbooks
+  ansible.builtin.import_playbook: infra.yml
+
+- name: Import database playbook
+  ansible.builtin.import_playbook: database.yml
+
+- name: Import application server playbook
+  ansible.builtin.import_playbook: appserver.yml
+
+- name: Import Jenkins CI server playbook
+  ansible.builtin.import_playbook: ci.yml

@@ -1,0 +1,10 @@
+# roles/deploy/defaults/main.yml
+---
+app_name: "cmdb"
+app_war_name: "cmdb.war"
+app_war_source: ""           # set by Jenkins / CLI: path to .war on controller
+app_context_root: "/cmdb"
+deploy_backup_dir: "/opt/cmdb/backups"
+deploy_health_url: "http://localhost:{{ glassfish_http_port }}{{ app_context_root }}/health"
+deploy_health_retries: 12
+deploy_health_delay: 10

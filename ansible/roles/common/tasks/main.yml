@@ -1,0 +1,87 @@
+# roles/common/tasks/main.yml
+---
+- name: Set hostname to inventory hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+  tags: [common, hostname]
+
+- name: Ensure EPEL repository is present (RHEL family)
+  ansible.builtin.yum:
+    name: epel-release
+    state: present
+  when: ansible_os_family == "RedHat"
+  tags: [common, packages]
+
+- name: Install baseline packages
+  ansible.builtin.package:
+    name:
+      - unzip
+      - wget
+      - curl
+      - tar
+      - vim
+      - chrony
+      - firewalld
+      - policycoreutils-python-utils
+    state: present
+  tags: [common, packages]
+
+- name: Enable and start chronyd (NTP)
+  ansible.builtin.systemd:
+    name: chronyd
+    enabled: true
+    state: started
+  tags: [common, ntp]
+
+- name: Enable and start firewalld
+  ansible.builtin.systemd:
+    name: firewalld
+    enabled: true
+    state: started
+  tags: [common, firewall]
+
+- name: Open required firewall ports
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop: "{{ firewall_allowed_ports }}"
+  tags: [common, firewall]
+
+- name: Set SELinux to enforcing
+  ansible.posix.selinux:
+    policy: targeted
+    state: enforcing
+  when: ansible_os_family == "RedHat"
+  tags: [common, selinux]
+
+- name: Create deploy user
+  ansible.builtin.user:
+    name: deploy
+    shell: /bin/bash
+    groups: wheel
+    append: true
+    create_home: true
+  tags: [common, users]
+
+- name: Set timezone to America/Mexico_City
+  community.general.timezone:
+    name: America/Mexico_City
+  tags: [common, timezone]
+
+- name: Disable root SSH login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin no"
+  notify: restart sshd
+  tags: [common, ssh]
+
+- name: Enforce SSH key-only authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication no"
+  notify: restart sshd
+  tags: [common, ssh]

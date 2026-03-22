@@ -1,0 +1,44 @@
+# ansible/inventories/prod/group_vars/all.yml
+---
+env_name: prod
+
+java_major_version: "17"
+java_package: "java-17-openjdk-devel"
+java_home: "/usr/lib/jvm/java-17-openjdk"
+
+glassfish_version: "7.0.14"
+glassfish_download_url: "https://github.com/eclipse-ee4j/glassfish/releases/download/{{ glassfish_version }}/glassfish-{{ glassfish_version }}.zip"
+glassfish_install_dir: "/opt/glassfish7"
+glassfish_domain: "domain1"
+glassfish_admin_user: "admin"
+glassfish_admin_password: "{{ vault_glassfish_admin_password }}"
+glassfish_http_port: 8080
+glassfish_https_port: 8181
+glassfish_admin_port: 4848
+glassfish_user: "glassfish"
+glassfish_group: "glassfish"
+
+mongodb_version: "7.0"
+mongodb_port: 27017
+mongodb_bind_ip: "127.0.0.1"    # Prod: bind only to localhost / private net
+mongodb_data_dir: "/var/lib/mongo"
+mongodb_log_dir: "/var/log/mongodb"
+mongodb_admin_user: "cmdbAdmin"
+mongodb_admin_password: "{{ vault_mongodb_admin_password }}"
+mongodb_app_user: "cmdbApp"
+mongodb_app_password: "{{ vault_mongodb_app_password }}"
+mongodb_app_db: "cmdb"
+
+app_name: "cmdb"
+app_war_name: "cmdb.war"
+app_context_root: "/cmdb"
+app_log_dir: "/opt/cmdb/logs"
+app_mongodb_uri: "mongodb://{{ mongodb_app_user }}:{{ mongodb_app_password }}@{{ hostvars[groups['dbservers'][0]]['ansible_host'] }}:{{ mongodb_port }}/{{ mongodb_app_db }}?authSource={{ mongodb_app_db }}"
+
+jenkins_http_port: 8080
+jenkins_home: "/var/lib/jenkins"
+
+firewall_allowed_ports:
+  - "{{ glassfish_http_port }}/tcp"
+  - "{{ glassfish_https_port }}/tcp"
+  - "22/tcp"
