@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CMDB Ansible Guide – Step by Step</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f6fb;
+      color: #222;
+      line-height: 1.7;
+    }
+    header {
+      background: linear-gradient(135deg, #1a3a5c 0%, #2563eb 100%);
+      color: #fff;
+      padding: 2.5rem 2rem 2rem;
+      text-align: center;
+    }
+    header h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: .4rem; }
+    header p  { font-size: 1.05rem; opacity: .88; }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    /* Table of Contents */
+    .toc {
+      background: #fff;
+      border: 1px solid #dce3ee;
+      border-radius: 10px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 2.5rem;
+    }
+    .toc h2 { font-size: 1.1rem; color: #1a3a5c; margin-bottom: .8rem; }
+    .toc ol { padding-left: 1.4rem; }
+    .toc li { margin: .3rem 0; }
+    .toc a  { color: #2563eb; text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    /* Concept box */
+    .concept {
+      background: #eef4ff;
+      border-left: 5px solid #2563eb;
+      border-radius: 8px;
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .concept h3 { color: #1a3a5c; margin-bottom: .5rem; }
+
+    /* Section cards */
+    .step-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #dce3ee;
+      padding: 1.8rem 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+    .step-card h2 {
+      display: flex; align-items: center; gap: .6rem;
+      color: #1a3a5c;
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      padding-bottom: .6rem;
+      border-bottom: 2px solid #e8edf5;
+    }
+    .step-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px;
+      background: #2563eb; color: #fff;
+      border-radius: 50%; font-size: .95rem; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .step-card h3 { color: #1a3a5c; margin: 1.2rem 0 .4rem; font-size: 1rem; }
+    .step-card p  { margin-bottom: .6rem; }
+    .step-card ul, .step-card ol { padding-left: 1.5rem; margin-bottom: .8rem; }
+    .step-card li { margin: .3rem 0; }
+
+    /* Code blocks */
+    pre {
+      background: #1e2433;
+      color: #c9d1d9;
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      overflow-x: auto;
+      font-size: .88rem;
+      line-height: 1.6;
+      margin: .8rem 0 1rem;
+    }
+    code { font-family: 'Consolas', 'Courier New', monospace; }
+    pre code { color: inherit; }
+    .inline-code {
+      background: #eef4ff;
+      color: #1a3a5c;
+      font-family: monospace;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: .92em;
+    }
+
+    /* Callout boxes */
+    .callout {
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      font-size: .95rem;
+    }
+    .callout-warn  { background: #fff8e1; border-left: 4px solid #f59e0b; }
+    .callout-tip   { background: #ecfdf5; border-left: 4px solid #10b981; }
+    .callout-info  { background: #eef4ff; border-left: 4px solid #2563eb; }
+    .callout-stop  { background: #fef2f2; border-left: 4px solid #ef4444; }
+    .callout strong { display: block; margin-bottom: .3rem; }
+
+    /* Diagram */
+    .diagram {
+      font-family: monospace;
+      font-size: .85rem;
+      background: #1e2433;
+      color: #7dd3fc;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      text-align: center;
+      line-height: 2;
+    }
+    .diagram .box {
+      display: inline-block;
+      border: 1px solid #38bdf8;
+      border-radius: 6px;
+      padding: .2rem .8rem;
+      color: #fff;
+      margin: 0 .5rem;
+    }
+    .diagram .arrow { color: #94a3b8; }
+
+    /* File tree */
+    .file-tree {
+      background: #1e2433;
+      color: #a3b4cc;
+      border-radius: 8px;
+      padding: 1rem 1.4rem;
+      font-family: monospace;
+      font-size: .88rem;
+      line-height: 1.9;
+      margin: .8rem 0;
+    }
+    .file-tree .dir  { color: #7dd3fc; font-weight: 600; }
+    .file-tree .file { color: #c9d1d9; }
+    .file-tree .note { color: #64748b; font-style: italic; }
+
+    /* Checklist */
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { padding-left: 1.8rem; position: relative; margin: .4rem 0; }
+    .checklist li::before {
+      content: "☐";
+      position: absolute; left: 0;
+      color: #2563eb; font-size: 1.1rem;
+    }
+
+    /* Command reference table */
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .93rem; }
+    th { background: #1a3a5c; color: #fff; padding: .6rem 1rem; text-align: left; }
+    td { padding: .55rem 1rem; border-bottom: 1px solid #e8edf5; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f8fafc; }
+
+    footer { text-align: center; color: #94a3b8; font-size: .87rem; padding: 2rem 0 1rem; }
+    a { color: #2563eb; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🚀 CMDB Project — Ansible Guide</h1>
+  <p>A complete, beginner-friendly walkthrough to get your CMDB stack running with Ansible</p>
+</header>
+
+<div class="container">
+
+  <!-- ── TABLE OF CONTENTS ──────────────────────────────── -->
+  <div class="toc">
+    <h2>📋 Table of Contents</h2>
+    <ol>
+      <li><a href="#what-is-ansible">What is Ansible? (Plain English)</a></li>
+      <li><a href="#architecture">What This Project Builds</a></li>
+      <li><a href="#prerequisites">Before You Start — Prerequisites</a></li>
+      <li><a href="#step1">Step 1 — Install Ansible on Your Computer</a></li>
+      <li><a href="#step2">Step 2 — Prepare Three Linux Servers</a></li>
+      <li><a href="#step3">Step 3 — Set Up SSH Key Authentication</a></li>
+      <li><a href="#step4">Step 4 — Update the Inventory (Server IP Addresses)</a></li>
+      <li><a href="#step5">Step 5 — Set Up Your Vault (Secret Passwords)</a></li>
+      <li><a href="#step6">Step 6 — Install Required Ansible Collections</a></li>
+      <li><a href="#step7">Step 7 — Test the Connection to All Servers</a></li>
+      <li><a href="#step8">Step 8 — Run the Full Provisioning Playbook</a></li>
+      <li><a href="#step9">Step 9 — Build &amp; Deploy the CMDB Application</a></li>
+      <li><a href="#step10">Step 10 — Verify Everything is Working</a></li>
+      <li><a href="#cheatsheet">Quick Command Cheatsheet</a></li>
+      <li><a href="#troubleshoot">Troubleshooting Common Errors</a></li>
+    </ol>
+  </div>
+
+
+  <!-- ── WHAT IS ANSIBLE ────────────────────────────────── -->
+  <div class="step-card" id="what-is-ansible">
+    <h2>💡 What is Ansible? (Plain English)</h2>
+
+    <div class="concept">
+      <h3>Think of Ansible like a "remote control" for servers</h3>
+      <p>Normally, to set up a server you would log in, run commands manually, install software, edit config files, etc. Ansible lets you <strong>write those steps once</strong> in a file (called a <em>playbook</em>), and then run them automatically on any number of servers — all from your own laptop, without ever logging in manually.</p>
+    </div>
+
+    <h3>Key concepts you need to know:</h3>
+    <table>
+      <tr><th>Term</th><th>What it means (simply)</th></tr>
+      <tr><td><strong>Control Node</strong></td><td>Your laptop / PC — the machine <em>running</em> Ansible</td></tr>
+      <tr><td><strong>Managed Nodes</strong></td><td>The remote servers Ansible <em>configures</em> (your 3 Linux VMs)</td></tr>
+      <tr><td><strong>Inventory</strong></td><td>A list of your servers (with their IP addresses)</td></tr>
+      <tr><td><strong>Playbook</strong></td><td>A recipe file listing <em>what</em> to install and configure</td></tr>
+      <tr><td><strong>Role</strong></td><td>A reusable bundle of tasks (e.g., "install MongoDB")</td></tr>
+      <tr><td><strong>Vault</strong></td><td>An encrypted file where Ansible stores passwords safely</td></tr>
+      <tr><td><strong>SSH</strong></td><td>How Ansible connects to your servers (like a secure tunnel)</td></tr>
+    </table>
+
+    <div class="callout callout-tip">
+      <strong>✅ Good news!</strong> Ansible is <strong>agentless</strong> — you do NOT install anything special on your servers. Ansible connects via SSH (which Linux servers already have) and runs commands remotely.
+    </div>
+  </div>
+
+
+  <!-- ── ARCHITECTURE ───────────────────────────────────── -->
+  <div class="step-card" id="architecture">
+    <h2>🏗 What This Project Builds</h2>
+
+    <p>Your CMDB project provisions <strong>3 servers</strong>, each with a specific role:</p>
+
+    <div class="diagram">
+      <div>
+        <span class="box">💻 Your Laptop<br/>(Ansible Control Node)</span>
+      </div>
+      <div class="arrow">↙ SSH ↓ SSH ↘ SSH</div>
+      <div>
+        <span class="box">🖥 App Server<br/>GlassFish 7<br/>192.168.56.10</span>
+        &nbsp;&nbsp;
+        <span class="box">🗄 DB Server<br/>MongoDB 7<br/>192.168.56.11</span>
+        &nbsp;&nbsp;
+        <span class="box">🔧 CI Server<br/>Jenkins<br/>192.168.56.12</span>
+      </div>
+    </div>
+
+    <h3>What gets installed on each server:</h3>
+    <table>
+      <tr><th>Server</th><th>Software Installed</th><th>What it does</th></tr>
+      <tr><td><strong>App Server</strong><br/>cmdb-dev-app01</td><td>Java 17, GlassFish 7</td><td>Runs the CMDB web application (the WAR file)</td></tr>
+      <tr><td><strong>DB Server</strong><br/>cmdb-dev-db01</td><td>Java 17, MongoDB 7</td><td>Stores all CMDB data</td></tr>
+      <tr><td><strong>CI Server</strong><br/>cmdb-dev-ci01</td><td>Java 17, Jenkins</td><td>Automates builds &amp; deployments</td></tr>
+    </table>
+
+    <h3>Your project's Ansible folder structure:</h3>
+    <div class="file-tree">
+      <span class="dir">ansible/</span><br/>
+      ├── <span class="file">ansible.cfg</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Ansible settings (roles path, SSH user, etc.)</span><br/>
+      ├── <span class="file">requirements.yml</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Extra Ansible plugins to install</span><br/>
+      ├── <span class="dir">inventories/</span><br/>
+      │&nbsp;&nbsp; ├── <span class="dir">dev/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Development environment</span><br/>
+      │&nbsp;&nbsp; │&nbsp;&nbsp; ├── <span class="file">hosts.yml</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← YOUR SERVER IP ADDRESSES</span><br/>
+      │&nbsp;&nbsp; │&nbsp;&nbsp; └── <span class="dir">group_vars/all.yml</span> &nbsp;<span class="note">← Variables (ports, versions, etc.)</span><br/>
+      │&nbsp;&nbsp; ├── <span class="dir">staging/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Staging environment</span><br/>
+      │&nbsp;&nbsp; └── <span class="dir">prod/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Production environment</span><br/>
+      ├── <span class="dir">playbooks/</span><br/>
+      │&nbsp;&nbsp; ├── <span class="file">site.yml</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← MASTER playbook (runs everything)</span><br/>
+      │&nbsp;&nbsp; ├── <span class="file">infra.yml</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Common setup + Java on all servers</span><br/>
+      │&nbsp;&nbsp; ├── <span class="file">database.yml</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← MongoDB setup</span><br/>
+      │&nbsp;&nbsp; ├── <span class="file">appserver.yml</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← GlassFish setup</span><br/>
+      │&nbsp;&nbsp; ├── <span class="file">ci.yml</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Jenkins setup</span><br/>
+      │&nbsp;&nbsp; └── <span class="file">deploy.yml</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Deploy the CMDB WAR file</span><br/>
+      ├── <span class="dir">roles/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Reusable automation scripts</span><br/>
+      │&nbsp;&nbsp; ├── <span class="dir">common/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Firewall, users, SSH hardening</span><br/>
+      │&nbsp;&nbsp; ├── <span class="dir">java/</span><br/>
+      │&nbsp;&nbsp; ├── <span class="dir">glassfish/</span><br/>
+      │&nbsp;&nbsp; ├── <span class="dir">mongodb/</span><br/>
+      │&nbsp;&nbsp; └── <span class="dir">jenkins_server/</span><br/>
+      └── <span class="dir">vault/</span><br/>
+      &nbsp;&nbsp;&nbsp; ├── <span class="file">vault_secrets.yml</span> &nbsp;&nbsp;<span class="note">← Your encrypted passwords (you create this)</span><br/>
+      &nbsp;&nbsp;&nbsp; └── <span class="file">vault_secrets.yml.example</span> <span class="note">← Template to copy from</span>
+    </div>
+  </div>
+
+
+  <!-- ── PREREQUISITES ──────────────────────────────────── -->
+  <div class="step-card" id="prerequisites">
+    <h2>✅ Before You Start — Prerequisites</h2>
+
+    <h3>What you need:</h3>
+    <ul class="checklist">
+      <li>A <strong>Linux or macOS</strong> laptop/PC to run Ansible from (Windows users: use WSL2 — Windows Subsystem for Linux)</li>
+      <li><strong>3 Linux servers</strong> (Rocky Linux 8/9 or AlmaLinux recommended — these match the project's RHEL/CentOS setup). Can be VMs, cloud VMs (AWS, Azure, DigitalOcean), or VirtualBox VMs on your laptop</li>
+      <li><strong>SSH access</strong> to all 3 servers (you need root or sudo access)</li>
+      <li><strong>Python 3.8+</strong> installed on your laptop (usually already there on Linux/macOS)</li>
+      <li><strong>Maven</strong> installed on your laptop (to build the Java WAR file)</li>
+      <li>Basic familiarity with a terminal / command line</li>
+    </ul>
+
+    <div class="callout callout-info">
+      <strong>💡 Tip — Using VirtualBox for practice:</strong>
+      If you don't have cloud servers, you can create 3 VirtualBox VMs on your own computer. Set them to "Host-Only Adapter" networking with IPs 192.168.56.10, .11, .12 — these match the dev inventory exactly.
+    </div>
+
+    <div class="callout callout-warn">
+      <strong>⚠️ Operating System:</strong>
+      This project is written for <strong>RHEL/Rocky Linux/AlmaLinux/CentOS</strong> (it uses <code class="inline-code">yum</code> and <code class="inline-code">firewalld</code>). It will NOT work on Ubuntu/Debian without modifications to the playbooks.
+    </div>
+  </div>
+
+
+  <!-- ── STEP 1 ──────────────────────────────────────────── -->
+  <div class="step-card" id="step1">
+    <h2><span class="step-num">1</span> Install Ansible on Your Computer</h2>
+
+    <p>Run these commands <strong>on your laptop/PC</strong> (your control node):</p>
+
+    <h3>On macOS:</h3>
+    <pre><code># Install Homebrew first if you don't have it:
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Then install Ansible:
+brew install ansible</code></pre>
+
+    <h3>On Linux (Ubuntu/Debian):</h3>
+    <pre><code>sudo apt update
+sudo apt install -y python3-pip
+pip3 install ansible --user</code></pre>
+
+    <h3>On Linux (RHEL/Rocky/AlmaLinux):</h3>
+    <pre><code>sudo dnf install -y epel-release
+sudo dnf install -y ansible</code></pre>
+
+    <h3>On Windows (WSL2):</h3>
+    <pre><code># Open WSL2 terminal, then:
+sudo apt update && sudo apt install -y python3-pip
+pip3 install ansible --user</code></pre>
+
+    <h3>Verify the installation:</h3>
+    <pre><code>ansible --version</code></pre>
+    <p>You should see output like <code class="inline-code">ansible [core 2.16.x]</code>. ✅</p>
+  </div>
+
+
+  <!-- ── STEP 2 ──────────────────────────────────────────── -->
+  <div class="step-card" id="step2">
+    <h2><span class="step-num">2</span> Prepare Three Linux Servers</h2>
+
+    <p>You need 3 servers running <strong>Rocky Linux 9</strong> (or AlmaLinux 9). For each server:</p>
+    <ul>
+      <li>Set a static IP address (or note the IP if it's assigned by DHCP)</li>
+      <li>Make sure SSH is running (<code class="inline-code">systemctl status sshd</code>)</li>
+      <li>Have root access (or a user with sudo)</li>
+    </ul>
+
+    <div class="callout callout-info">
+      <strong>📝 Note down your IP addresses!</strong><br/>
+      You will need them in Step 4. The default in this project is:
+      <ul>
+        <li>App server: <code class="inline-code">192.168.56.10</code></li>
+        <li>DB server: &nbsp;<code class="inline-code">192.168.56.11</code></li>
+        <li>CI server: &nbsp;<code class="inline-code">192.168.56.12</code></li>
+      </ul>
+      If your servers have different IPs, no problem — you'll update the inventory in Step 4.
+    </div>
+
+    <h3>On each server, create the "deploy" user that Ansible will use:</h3>
+    <pre><code># Run this on EACH server (log in as root first):
+useradd -m -s /bin/bash -G wheel deploy
+
+# Allow the "wheel" group to use sudo without a password:
+echo '%wheel ALL=(ALL) NOPASSWD: ALL' | tee /etc/sudoers.d/wheel-nopasswd
+
+# Verify:
+su - deploy
+sudo whoami    # Should print: root</code></pre>
+
+    <div class="callout callout-tip">
+      <strong>✅ Why "deploy" user?</strong>
+      The <code class="inline-code">ansible.cfg</code> file sets <code class="inline-code">remote_user = deploy</code>, meaning Ansible will always connect as the "deploy" user. This is a security best practice — Ansible never logs in as root directly.
+    </div>
+  </div>
+
+
+  <!-- ── STEP 3 ──────────────────────────────────────────── -->
+  <div class="step-card" id="step3">
+    <h2><span class="step-num">3</span> Set Up SSH Key Authentication</h2>
+
+    <p>Ansible connects to your servers via SSH. Instead of typing a password every time, we use SSH keys (a pair of digital "locks and keys").</p>
+
+    <h3>3a. Generate an SSH key on your laptop (if you don't have one):</h3>
+    <pre><code>ssh-keygen -t ed25519 -C "ansible-cmdb"
+# Press Enter to accept defaults (no passphrase needed for automation)</code></pre>
+
+    <p>This creates two files:</p>
+    <ul>
+      <li><code class="inline-code">~/.ssh/id_ed25519</code> — your <strong>private key</strong> (NEVER share this)</li>
+      <li><code class="inline-code">~/.ssh/id_ed25519.pub</code> — your <strong>public key</strong> (copy this to servers)</li>
+    </ul>
+
+    <h3>3b. Copy your public key to each server:</h3>
+    <pre><code># Replace with your actual server IPs:
+ssh-copy-id deploy@192.168.56.10
+ssh-copy-id deploy@192.168.56.11
+ssh-copy-id deploy@192.168.56.12</code></pre>
+
+    <p>You'll be asked for the deploy user's password once. After this, no more passwords!</p>
+
+    <h3>3c. Test that passwordless SSH works:</h3>
+    <pre><code>ssh deploy@192.168.56.10    # Should log in WITHOUT asking for a password
+ssh deploy@192.168.56.11
+ssh deploy@192.168.56.12</code></pre>
+
+    <div class="callout callout-stop">
+      <strong>🛑 Don't skip this step!</strong>
+      If SSH key authentication is not set up, Ansible will fail with authentication errors. Every single server must accept your SSH key before running Ansible.
+    </div>
+  </div>
+
+
+  <!-- ── STEP 4 ──────────────────────────────────────────── -->
+  <div class="step-card" id="step4">
+    <h2><span class="step-num">4</span> Update the Inventory (Your Server IP Addresses)</h2>
+
+    <p>Open this file in a text editor:</p>
+    <p><strong><code class="inline-code">ansible/inventories/dev/hosts.yml</code></strong></p>
+
+    <p>It currently looks like this:</p>
+    <pre><code>all:
+  children:
+    appservers:
+      hosts:
+        cmdb-dev-app01:
+          ansible_host: 192.168.56.10   # ← Change this to your App Server IP
+
+    dbservers:
+      hosts:
+        cmdb-dev-db01:
+          ansible_host: 192.168.56.11   # ← Change this to your DB Server IP
+
+    jenkins:
+      hosts:
+        cmdb-dev-ci01:
+          ansible_host: 192.168.56.12   # ← Change this to your CI Server IP</code></pre>
+
+    <div class="callout callout-tip">
+      <strong>✅ If your IPs match (192.168.56.x), no changes needed!</strong><br/>
+      Just edit the numbers after <code class="inline-code">ansible_host:</code> to match your actual server IPs.
+    </div>
+
+    <p>Save the file when done.</p>
+  </div>
+
+
+  <!-- ── STEP 5 ──────────────────────────────────────────── -->
+  <div class="step-card" id="step5">
+    <h2><span class="step-num">5</span> Set Up Your Vault (Secret Passwords)</h2>
+
+    <p>The vault is an <strong>encrypted file</strong> that stores sensitive passwords. Ansible reads it automatically during runs, but only you can open it with your vault password.</p>
+
+    <h3>5a. Create the vault secrets file from the example template:</h3>
+    <pre><code># From inside the ansible/ directory:
+cd /path/to/cmdb/ansible
+
+cp vault/vault_secrets.yml.example vault/vault_secrets.yml</code></pre>
+
+    <h3>5b. Edit the file and fill in real passwords:</h3>
+    <pre><code># Open vault/vault_secrets.yml in your editor and change CHANGE_ME values:
+---
+vault_glassfish_admin_password: "MyGlassFishPass123!"
+vault_mongodb_admin_password:   "MyMongoAdminPass456!"
+vault_mongodb_app_password:     "MyMongoAppPass789!"
+vault_jenkins_admin_password:   "MyJenkinsPass321!"</code></pre>
+
+    <div class="callout callout-warn">
+      <strong>⚠️ Password rules:</strong>
+      Use strong passwords (8+ characters, mix of letters, numbers, symbols). Avoid <code class="inline-code">@</code> in MongoDB passwords as it can break connection strings.
+    </div>
+
+    <h3>5c. Encrypt the vault file:</h3>
+    <pre><code>ansible-vault encrypt vault/vault_secrets.yml</code></pre>
+    <p>You'll be asked to <strong>create a vault password</strong>. Choose something memorable — you'll need it every time you run a playbook. The file will become unreadable gibberish (that's good!).</p>
+
+    <h3>5d. Create a vault password file (so you don't type it every run):</h3>
+    <pre><code># Create a secure file to hold your vault password:
+mkdir -p ~/.ansible
+echo "YourVaultPasswordHere" > ~/.ansible/vault_pass_cmdb
+chmod 600 ~/.ansible/vault_pass_cmdb</code></pre>
+
+    <div class="callout callout-stop">
+      <strong>🛑 Critical security note:</strong>
+      Never commit <code class="inline-code">vault_secrets.yml</code> (unencrypted) or <code class="inline-code">~/.ansible/vault_pass_cmdb</code> to Git. The <code class="inline-code">vault_secrets.yml</code> in the repo should always be the encrypted version.
+    </div>
+
+    <h3>5e. Uncomment the vault password line in ansible.cfg:</h3>
+    <p>Open <code class="inline-code">ansible/ansible.cfg</code> and find this line (near line 26). Remove the <code class="inline-code">#</code> at the beginning:</p>
+    <pre><code># Before:
+# vault_password_file = ~/.ansible/vault_pass_cmdb
+
+# After:
+vault_password_file = ~/.ansible/vault_pass_cmdb</code></pre>
+  </div>
+
+
+  <!-- ── STEP 6 ──────────────────────────────────────────── -->
+  <div class="step-card" id="step6">
+    <h2><span class="step-num">6</span> Install Required Ansible Collections</h2>
+
+    <p>Your project uses extra Ansible "plugins" called collections. Install them with one command:</p>
+
+    <pre><code># Run this from inside the ansible/ folder:
+cd /path/to/cmdb/ansible
+
+ansible-galaxy collection install -r requirements.yml</code></pre>
+
+    <p>This installs:</p>
+    <ul>
+      <li><code class="inline-code">ansible.posix</code> — for firewall and SELinux tasks</li>
+      <li><code class="inline-code">community.general</code> — for timezone and other utilities</li>
+      <li><code class="inline-code">community.mongodb</code> — for MongoDB management</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <strong>✅ You only need to run this once</strong> (unless you update requirements.yml).
+    </div>
+  </div>
+
+
+  <!-- ── STEP 7 ──────────────────────────────────────────── -->
+  <div class="step-card" id="step7">
+    <h2><span class="step-num">7</span> Test the Connection to All Servers</h2>
+
+    <p>Before running any playbooks, verify Ansible can reach all your servers:</p>
+
+    <pre><code># From inside the ansible/ folder:
+cd /path/to/cmdb/ansible
+
+ansible all -i inventories/dev/hosts.yml -m ping</code></pre>
+
+    <h3>✅ Expected output (SUCCESS):</h3>
+    <pre><code>cmdb-dev-app01 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+cmdb-dev-db01 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+cmdb-dev-ci01 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}</code></pre>
+
+    <h3>❌ If you see UNREACHABLE errors:</h3>
+    <ul>
+      <li>Check the server IPs in <code class="inline-code">hosts.yml</code> are correct</li>
+      <li>Make sure SSH key authentication works (re-do Step 3)</li>
+      <li>Check the servers are running and reachable from your network</li>
+      <li>Check that firewall on servers allows port 22 (SSH)</li>
+    </ul>
+  </div>
+
+
+  <!-- ── STEP 8 ──────────────────────────────────────────── -->
+  <div class="step-card" id="step8">
+    <h2><span class="step-num">8</span> Run the Full Provisioning Playbook</h2>
+
+    <p>This is the <strong>big moment</strong>! The master playbook (<code class="inline-code">site.yml</code>) will set up ALL three servers — Java, MongoDB, GlassFish, and Jenkins — in one go.</p>
+
+    <div class="callout callout-warn">
+      <strong>⚠️ This takes a while!</strong>
+      Expect 10–30 minutes on the first run. It downloads and installs a lot of software. Be patient and watch the output.
+    </div>
+
+    <pre><code># From inside the ansible/ folder:
+cd /path/to/cmdb/ansible
+
+ansible-playbook -i inventories/dev/hosts.yml playbooks/site.yml</code></pre>
+
+    <p>Ansible will go through each server and run tasks one by one. You'll see output like:</p>
+    <pre><code>PLAY [Common baseline for all hosts] ****************************
+
+TASK [common : Set hostname to inventory hostname] **************
+changed: [cmdb-dev-app01]
+changed: [cmdb-dev-db01]
+changed: [cmdb-dev-ci01]
+
+TASK [common : Ensure EPEL repository is present] ***************
+changed: [cmdb-dev-app01]
+...
+
+PLAY RECAP ******************************************************
+cmdb-dev-app01  : ok=25  changed=18  unreachable=0  failed=0
+cmdb-dev-db01   : ok=22  changed=15  unreachable=0  failed=0
+cmdb-dev-ci01   : ok=20  changed=14  unreachable=0  failed=0</code></pre>
+
+    <h3>Understanding the output colors/statuses:</h3>
+    <table>
+      <tr><th>Status</th><th>Meaning</th></tr>
+      <tr><td><strong style="color:#27ae60">ok</strong></td><td>Task ran and nothing needed to change (already correct)</td></tr>
+      <tr><td><strong style="color:#e67e22">changed</strong></td><td>Task ran and made a change (installed something, edited a file, etc.)</td></tr>
+      <tr><td><strong style="color:#e74c3c">failed</strong></td><td>Task failed — check the error message ❌</td></tr>
+      <tr><td><strong style="color:#e74c3c">unreachable</strong></td><td>Could not connect to the server — SSH/network issue ❌</td></tr>
+    </table>
+
+    <div class="callout callout-tip">
+      <strong>✅ Playbooks are safe to re-run!</strong>
+      Ansible is <em>idempotent</em> — running it multiple times won't break anything. If a task already set things up correctly, it just shows "ok" and skips it. You can re-run the playbook to fix failed tasks.
+    </div>
+
+    <h3>Run individual parts instead of everything at once:</h3>
+    <pre><code># Only set up infrastructure (common + Java) on all servers:
+ansible-playbook -i inventories/dev/hosts.yml playbooks/infra.yml
+
+# Only set up MongoDB:
+ansible-playbook -i inventories/dev/hosts.yml playbooks/database.yml
+
+# Only set up GlassFish:
+ansible-playbook -i inventories/dev/hosts.yml playbooks/appserver.yml
+
+# Only set up Jenkins:
+ansible-playbook -i inventories/dev/hosts.yml playbooks/ci.yml</code></pre>
+  </div>
+
+
+  <!-- ── STEP 9 ──────────────────────────────────────────── -->
+  <div class="step-card" id="step9">
+    <h2><span class="step-num">9</span> Build &amp; Deploy the CMDB Application</h2>
+
+    <p>Now that the infrastructure is ready, deploy the actual CMDB Java application.</p>
+
+    <h3>9a. Build the WAR file with Maven (on your laptop):</h3>
+    <pre><code># Go to the root of the cmdb project:
+cd /path/to/cmdb
+
+# Build the project (this compiles Java code and creates a .war file):
+mvn clean package -DskipTests
+
+# The WAR file will be at:
+ls target/cmdb.war</code></pre>
+
+    <div class="callout callout-warn">
+      <strong>⚠️ You need Maven installed for this.</strong>
+      Install it with: <code class="inline-code">brew install maven</code> (macOS) or <code class="inline-code">sudo dnf install -y maven</code> (Linux).
+    </div>
+
+    <h3>9b. Deploy the WAR to GlassFish using Ansible:</h3>
+    <pre><code># From inside the ansible/ folder:
+cd /path/to/cmdb/ansible
+
+ansible-playbook -i inventories/dev/hosts.yml playbooks/deploy.yml \
+    -e "app_war_source=../target/cmdb.war"</code></pre>
+
+    <p>This will copy the WAR file to the App Server and deploy it to GlassFish automatically.</p>
+  </div>
+
+
+  <!-- ── STEP 10 ──────────────────────────────────────────── -->
+  <div class="step-card" id="step10">
+    <h2><span class="step-num">10</span> Verify Everything is Working</h2>
+
+    <h3>Check the CMDB web application:</h3>
+    <p>Open your browser and go to:</p>
+    <pre><code>http://192.168.56.10:8080/cmdb</code></pre>
+    <p>You should see the CMDB application's main page.</p>
+
+    <h3>Check the health endpoint:</h3>
+    <pre><code>curl http://192.168.56.10:8080/cmdb/health</code></pre>
+
+    <h3>Check GlassFish Admin Console:</h3>
+    <pre><code>http://192.168.56.10:4848</code></pre>
+    <p>Login with username <code class="inline-code">admin</code> and the password you set in the vault.</p>
+
+    <h3>Check Jenkins:</h3>
+    <pre><code>http://192.168.56.12:8080</code></pre>
+
+    <h3>Check MongoDB is running (from the DB server):</h3>
+    <pre><code>ssh deploy@192.168.56.11
+sudo systemctl status mongod</code></pre>
+
+    <h3>Verify all services are running with Ansible:</h3>
+    <pre><code># Check facts and connectivity:
+ansible all -i inventories/dev/hosts.yml -m setup -a "filter=ansible_hostname"</code></pre>
+  </div>
+
+
+  <!-- ── CHEATSHEET ─────────────────────────────────────── -->
+  <div class="step-card" id="cheatsheet">
+    <h2>📋 Quick Command Cheatsheet</h2>
+    <p><em>All commands run from inside the <code class="inline-code">ansible/</code> folder.</em></p>
+
+    <table>
+      <tr><th>What you want to do</th><th>Command</th></tr>
+      <tr>
+        <td>Test connection to all servers</td>
+        <td><code class="inline-code">ansible all -i inventories/dev/hosts.yml -m ping</code></td>
+      </tr>
+      <tr>
+        <td>Provision everything (full setup)</td>
+        <td><code class="inline-code">ansible-playbook -i inventories/dev/hosts.yml playbooks/site.yml</code></td>
+      </tr>
+      <tr>
+        <td>Only set up MongoDB</td>
+        <td><code class="inline-code">ansible-playbook -i inventories/dev/hosts.yml playbooks/database.yml</code></td>
+      </tr>
+      <tr>
+        <td>Only set up GlassFish</td>
+        <td><code class="inline-code">ansible-playbook -i inventories/dev/hosts.yml playbooks/appserver.yml</code></td>
+      </tr>
+      <tr>
+        <td>Only set up Jenkins</td>
+        <td><code class="inline-code">ansible-playbook -i inventories/dev/hosts.yml playbooks/ci.yml</code></td>
+      </tr>
+      <tr>
+        <td>Deploy the CMDB app (WAR)</td>
+        <td><code class="inline-code">ansible-playbook -i inventories/dev/hosts.yml playbooks/deploy.yml -e "app_war_source=../target/cmdb.war"</code></td>
+      </tr>
+      <tr>
+        <td>Rollback the app</td>
+        <td><code class="inline-code">ansible-playbook -i inventories/dev/hosts.yml playbooks/rollback.yml</code></td>
+      </tr>
+      <tr>
+        <td>Run with verbose output (for debugging)</td>
+        <td>Add <code class="inline-code">-v</code> or <code class="inline-code">-vvv</code> to any command</td>
+      </tr>
+      <tr>
+        <td>Dry run (see what WOULD change)</td>
+        <td>Add <code class="inline-code">--check</code> to any playbook command</td>
+      </tr>
+      <tr>
+        <td>Only run tasks with a specific tag</td>
+        <td>Add <code class="inline-code">--tags mongodb</code> or <code class="inline-code">--tags glassfish</code></td>
+      </tr>
+      <tr>
+        <td>View vault secrets (to verify)</td>
+        <td><code class="inline-code">ansible-vault view vault/vault_secrets.yml</code></td>
+      </tr>
+      <tr>
+        <td>Edit vault secrets</td>
+        <td><code class="inline-code">ansible-vault edit vault/vault_secrets.yml</code></td>
+      </tr>
+      <tr>
+        <td>Use staging environment</td>
+        <td>Replace <code class="inline-code">inventories/dev</code> with <code class="inline-code">inventories/staging</code></td>
+      </tr>
+    </table>
+  </div>
+
+
+  <!-- ── TROUBLESHOOTING ────────────────────────────────── -->
+  <div class="step-card" id="troubleshoot">
+    <h2>🔧 Troubleshooting Common Errors</h2>
+
+    <h3>❌ "UNREACHABLE! Connection refused"</h3>
+    <p><strong>Cause:</strong> SSH not running or wrong IP.</p>
+    <ul>
+      <li>Verify the server IP: <code class="inline-code">ping 192.168.56.10</code></li>
+      <li>Check SSH is running on the server: <code class="inline-code">systemctl status sshd</code></li>
+      <li>Make sure port 22 is open in the server's firewall</li>
+    </ul>
+
+    <h3>❌ "Permission denied (publickey)"</h3>
+    <p><strong>Cause:</strong> SSH key not copied to the server.</p>
+    <ul>
+      <li>Re-run: <code class="inline-code">ssh-copy-id deploy@&lt;SERVER_IP&gt;</code></li>
+    </ul>
+
+    <h3>❌ "AnsibleError: Attempting to decrypt but no vault secrets found"</h3>
+    <p><strong>Cause:</strong> Ansible can't find the vault password.</p>
+    <ul>
+      <li>Make sure <code class="inline-code">~/.ansible/vault_pass_cmdb</code> exists and has the right password</li>
+      <li>Uncomment <code class="inline-code">vault_password_file</code> in <code class="inline-code">ansible.cfg</code></li>
+    </ul>
+
+    <h3>❌ "fatal: [host]: FAILED! => ...sudo: a password is required"</h3>
+    <p><strong>Cause:</strong> The deploy user can't run sudo without a password.</p>
+    <ul>
+      <li>On the server, run: <code class="inline-code">echo '%wheel ALL=(ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/wheel-nopasswd</code></li>
+      <li>Make sure the deploy user is in the wheel group: <code class="inline-code">sudo usermod -aG wheel deploy</code></li>
+    </ul>
+
+    <h3>❌ "Error: Package mongodb-org not found"</h3>
+    <p><strong>Cause:</strong> MongoDB repo wasn't added correctly.</p>
+    <ul>
+      <li>Run the database playbook with verbose output: add <code class="inline-code">-vvv</code></li>
+      <li>Check the MongoDB repo file on the server: <code class="inline-code">cat /etc/yum.repos.d/mongodb-org-7.0.repo</code></li>
+    </ul>
+
+    <h3>❌ GlassFish doesn't start (port 8080 not available)</h3>
+    <p><strong>Cause:</strong> Another service (like Tomcat or Jenkins) is using port 8080.</p>
+    <ul>
+      <li>Check: <code class="inline-code">sudo ss -tlnp | grep 8080</code></li>
+      <li>Jenkins also uses 8080 — make sure GlassFish and Jenkins are on different servers (they are in the default setup)</li>
+    </ul>
+
+    <h3>❌ "Missing required collections"</h3>
+    <p><strong>Cause:</strong> You skipped Step 6.</p>
+    <ul>
+      <li>Run: <code class="inline-code">ansible-galaxy collection install -r requirements.yml</code></li>
+    </ul>
+
+    <h3>Getting more details about an error:</h3>
+    <pre><code># Add -vvv for very verbose debug output:
+ansible-playbook -i inventories/dev/hosts.yml playbooks/site.yml -vvv 2>&amp;1 | tee ansible-run.log</code></pre>
+  </div>
+
+
+  <!-- ── SUMMARY FLOW ───────────────────────────────────── -->
+  <div class="step-card">
+    <h2>🗺 The Complete Flow (Summary)</h2>
+
+    <div class="concept">
+      <ol style="padding-left:1.5rem; line-height:2.2">
+        <li>Install Ansible on your laptop</li>
+        <li>Create 3 Rocky Linux servers with a "deploy" user</li>
+        <li>Copy your SSH key to all 3 servers</li>
+        <li>Update <code class="inline-code">hosts.yml</code> with your server IPs</li>
+        <li>Create &amp; encrypt <code class="inline-code">vault_secrets.yml</code> with your passwords</li>
+        <li>Run <code class="inline-code">ansible-galaxy collection install -r requirements.yml</code></li>
+        <li>Run <code class="inline-code">ansible all -m ping</code> to verify connectivity</li>
+        <li>Run <code class="inline-code">ansible-playbook playbooks/site.yml</code> — this sets up everything!</li>
+        <li>Build the WAR with Maven: <code class="inline-code">mvn clean package</code></li>
+        <li>Deploy with: <code class="inline-code">ansible-playbook playbooks/deploy.yml -e "app_war_source=../target/cmdb.war"</code></li>
+        <li>Open <code class="inline-code">http://&lt;app-server-ip&gt;:8080/cmdb</code> in your browser 🎉</li>
+      </ol>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Generated for the CMDB Project &mdash; Ansible Guide &mdash; March 2026
+</footer>
+
+</body>
+</html>
